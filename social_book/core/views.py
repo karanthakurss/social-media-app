@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.models import User, auth
 from django.contrib import messages
-from .models import Profile, Post, LikePost
+from .models import Profile, Post, LikePost, FollowersCount
 from django.contrib.auth.decorators import login_required
 
 # Create your views here.
@@ -35,6 +35,27 @@ def profile(request, pk):
     return render(request, 'profile.html', context)
 
 
+@login_required(login_url='signin')
+def follow(request):
+    if request.method == 'POST':
+        follower = request.POST['follower']
+        user = request.POST['user']
+        try:
+            if FollowersCount.objects.filter(follower=follower, user=user).first():
+                delFollower = FollowersCount.objects.get(follower=follower, user=user)
+                delFollower.delete()
+                return redirect('/profile/'+user)
+
+        except FollowersCount.DoesNotExist:
+            pass
+
+        else:
+            newFollower = FollowersCount.objects.create(follower=follower, user=user)
+            newFollower.save()
+            return redirect('/profile/'+user)
+    else:
+        return redirect('/')
+
 
 @login_required(login_url='signin')
 def upload(request):
@@ -60,7 +81,7 @@ def likePost(request):
 
     like_filter = LikePost.objects.filter(post_id=post_id, username=username).first()
 
-    if like_filter == None:
+    if like_filter is None:
         new_like = LikePost.objects.create(post_id=post_id, username=username)
         new_like.save() 
         post_object.no_of_likes += 1
@@ -81,7 +102,7 @@ def settings(request):
         user_profile = None
     
     if request.method == 'POST':
-        if request.FILES.get('image') == None:
+        if request.FILES.get('image') is None:
             image = user_profile.profileImage
             bio = request.POST['bio']
             location = request.POST['location']
